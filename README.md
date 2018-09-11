@@ -32,6 +32,7 @@ Check the new [leaderboard](http://host.robots.ox.ac.uk:8080/leaderboard/display
 - [x] SSD300
 - [x] SSD512
 - [x] FPNSSD512
+- [x] MobilenetV2FPNSSD512
 - [ ] RetinaNet
 - [ ] Faster R-CNN
 - [ ] Mask R-CNN
