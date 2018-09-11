@@ -13,6 +13,8 @@ import torch.backends.cudnn as cudnn
 import torchvision
 import torchvision.transforms as transforms
 
+import torch.backends.cudnn as cudnn
+
 from PIL import Image
 from torch.autograd import Variable
 
@@ -23,18 +25,20 @@ from torchcv.loss import SSDLoss
 from torchcv.datasets import ListDataset
 from torchcv.transforms import resize, random_flip, random_paste, random_crop, random_distort
 
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,2"
 
 parser = argparse.ArgumentParser(description='PyTorch SSD Training')
 parser.add_argument('--lr', default=1e-3, type=float, help='learning rate')
 parser.add_argument('--resume', '-r', action='store_true', help='resume from checkpoint')
-parser.add_argument('--model', default='./examples/ssd/model/ssd512_vgg16.pth', type=str, help='initialized model path')
+parser.add_argument('--model', default='./examples/ssd/model/ssd512_vgg16cvt.pth', type=str, help='initialized model path')
 parser.add_argument('--checkpoint', default='./examples/ssd/checkpoint/ckpt.pth', type=str, help='checkpoint path')
 args = parser.parse_args()
 
 # Model
 print('==> Building model..')
-# net = SSD512(num_classes=21)
-net = FPNSSD512(num_classes=21)
+net = SSD512(num_classes=21)
+# net = FPNSSD512(num_classes=21)
+
 net.load_state_dict(torch.load(args.model))
 best_loss = float('inf')  # best test loss
 start_epoch = 0  # start from epoch 0 or last epoch
@@ -63,7 +67,7 @@ def transform_train(img, boxes, labels):
     boxes, labels = box_coder.encode(boxes, labels)
     return img, boxes, labels
 
-trainset = ListDataset(root='/search/odin/liukuang/data/voc_all_images',
+trainset = ListDataset(root='/home/ysdu/hardwareDisk/ysduDir/voc/voc_all_images',
                        list_file=['torchcv/datasets/voc/voc07_trainval.txt',
                                   'torchcv/datasets/voc/voc12_trainval.txt'],
                        transform=transform_train)
@@ -77,12 +81,12 @@ def transform_test(img, boxes, labels):
     boxes, labels = box_coder.encode(boxes, labels)
     return img, boxes, labels
 
-testset = ListDataset(root='/search/odin/liukuang/data/voc_all_images',
+testset = ListDataset(root='/home/ysdu/hardwareDisk/ysduDir/voc/voc_all_images',
                       list_file='torchcv/datasets/voc/voc07_test.txt',
                       transform=transform_test)
 
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=32, shuffle=True, num_workers=8)
-testloader = torch.utils.data.DataLoader(testset, batch_size=32, shuffle=False, num_workers=8)
+trainloader = torch.utils.data.DataLoader(trainset, batch_size=32, shuffle=True, num_workers=4)
+testloader = torch.utils.data.DataLoader(testset, batch_size=4, shuffle=False, num_workers=4)
 
 net.cuda()
 net = torch.nn.DataParallel(net, device_ids=range(torch.cuda.device_count()))

@@ -3,13 +3,16 @@ import math
 import torch
 import itertools
 
+import numpy as np
+
 from torchcv.utils import meshgrid
 from torchcv.utils.box import box_iou, box_nms, change_box_order
 
 
 class FPNSSDBoxCoder:
     def __init__(self):
-        self.anchor_areas = (32*32., 64*64., 128*128., 256*256., 341*341., 426*426., 512*512.)
+        # self.anchor_areas = (32*32., 64*64., 128*128., 256*256., 341*341., 426*426., 512*512.)
+        self.anchor_areas = (32*32., 64*64., 128*128.,192*192., 256*256., 341*341., 426*426., 512*512.)
         self.aspect_ratios = (1/2., 1/1., 2/1.)
         self.scale_ratios = (1., pow(2,1/3.), pow(2,2/3.))
         self.anchor_boxes = self._get_anchor_boxes(input_size=torch.tensor([512.,512.]))
@@ -44,7 +47,11 @@ class FPNSSDBoxCoder:
         '''
         num_fms = len(self.anchor_areas)
         anchor_wh = self._get_anchor_wh()
-        fm_sizes = [(input_size/pow(2.,i+3)).ceil() for i in range(num_fms)]
+        # print (anchor_wh)
+        # fm_sizes = [(input_size/pow(2.,i+3)).ceil() for i in range(num_fms)]
+        fm_sizes = [(input_size/pow(2.,i+2)).ceil() for i in range(num_fms)]
+        # print (num_fms)
+        # print (fm_sizes)
 
         boxes = []
         for i in range(num_fms):
@@ -85,6 +92,7 @@ class FPNSSDBoxCoder:
             return (i[j], j)
 
         anchor_boxes = self.anchor_boxes
+        # print (anchor_boxes.size())
         ious = box_iou(anchor_boxes, boxes)  # [#anchors, #obj]
         index = torch.empty(anchor_boxes.size(0), dtype=torch.long).fill_(-1)
         masked_ious = ious.clone()
@@ -108,10 +116,12 @@ class FPNSSDBoxCoder:
         loc_wh = torch.log(boxes[:,2:]/anchor_boxes[:,2:])
         loc_targets = torch.cat([loc_xy,loc_wh], 1)
         cls_targets = 1 + labels[index.clamp(min=0)]
+        # print (labels.size())
+        # print (cls_targets.size())
         cls_targets[index<0] = 0
         return loc_targets, cls_targets
 
-    def decode(self, loc_preds, cls_preds, score_thresh=0.6, nms_thresh=0.45):
+    def decode(self, loc_preds, cls_preds, score_thresh=0.5, nms_thresh=0.45):
         '''Decode predicted loc/cls back to real box locations and class labels.
 
         Args:
@@ -124,7 +134,7 @@ class FPNSSDBoxCoder:
           boxes: (tensor) bbox locations, sized [#obj,4].
           labels: (tensor) class labels, sized [#obj,].
         '''
-        anchor_boxes = change_box_order(self.anchor_boxes, 'xyxy2xywh')
+        anchor_boxes = change_box_order(self.anchor_boxes, 'xyxy2xywh').cuda()
         xy = loc_preds[:,:2] * anchor_boxes[:,2:] + anchor_boxes[:,:2]
         wh = loc_preds[:,2:].exp() * anchor_boxes[:,2:]
         box_preds = torch.cat([xy-wh/2, xy+wh/2], 1)
@@ -133,22 +143,28 @@ class FPNSSDBoxCoder:
         labels = []
         scores = []
         num_classes = cls_preds.size(1)
+        # print (num_classes)
         for i in range(num_classes-1):
             score = cls_preds[:,i+1]  # class i corresponds to (i+1) column
+            # print (score)
             mask = score > score_thresh
+            # print (mask)
             if not mask.any():
+                # print ("continue")
                 continue
             box = box_preds[mask]
             score = score[mask]
-            print(box.size())
-            print(score.size())
+            # print(box.size())
+            # print(score.size())
 
             keep = box_nms(box, score, nms_thresh)
             boxes.append(box[keep])
             labels.append(torch.empty_like(keep).fill_(i))
             scores.append(score[keep])
 
-        boxes = torch.cat(boxes, 0)
+        # print (sizeof(boxes))
+        #print (np.array(boxes).shape)
+        boxes  = torch.cat(boxes, 0)
         labels = torch.cat(labels, 0)
         scores = torch.cat(scores, 0)
         return boxes, labels, scores

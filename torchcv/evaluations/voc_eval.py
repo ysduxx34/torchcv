@@ -11,7 +11,6 @@ import numpy as np
 
 from collections import defaultdict
 
-
 def voc_eval(pred_bboxes, pred_labels, pred_scores, gt_bboxes, gt_labels,
              gt_difficults=None, iou_thresh=0.5, use_07_metric=True):
     '''Wrap VOC evaluation for PyTorch.'''
@@ -228,7 +227,7 @@ def calc_detection_voc_prec_rec(
 
             gt_mask_l = gt_label == l
             gt_bbox_l = gt_bbox[gt_mask_l]
-            gt_difficult_l = gt_difficult[gt_mask_l]
+            gt_difficult_l = np.array(gt_difficult)[gt_mask_l]
 
             n_pos[l] += np.logical_not(gt_difficult_l).sum()
             score[l].extend(pred_score_l)

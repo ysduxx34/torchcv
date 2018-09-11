@@ -67,15 +67,15 @@ class SSDBoxCoder:
         masked_ious = ious.clone()
         while True:
             i, j = argmax(masked_ious)
-            if masked_ious[i,j] < 1e-6:
+            if masked_ious[i,j] < 1e-6: # search out max iou about anchors box and object box, judge it with 0.000001
                 break
             index[i] = j
             masked_ious[i,:] = 0
             masked_ious[:,j] = 0
 
-        mask = (index<0) & (ious.max(1)[0]>=0.5)
+        mask = (index<0) & (ious.max(1)[0]>=0.5) #0 or 1
         if mask.any():
-            index[mask] = ious[mask.nonzero().squeeze()].max(1)[1]
+            index[mask] = ious[mask.nonzero().squeeze()].view(-1, ious.size(1)).max(1)[1] #return indice of dim 1
 
         boxes = boxes[index.clamp(min=0)]  # negative index not supported
         boxes = change_box_order(boxes, 'xyxy2xywh')

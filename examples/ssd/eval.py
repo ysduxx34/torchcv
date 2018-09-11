@@ -28,7 +28,7 @@ def transform(img, boxes, labels):
     ])(img)
     return img, boxes, labels
 
-dataset = ListDataset(root='/search/odin/liukuang/data/voc_all_images/', \
+dataset = ListDataset(root='~/hardwareDisk/ysduDir/voc/voc_all_images', \
                       list_file='torchcv/datasets/voc/voc07_test.txt',
                       transform=transform)
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False, num_workers=2)

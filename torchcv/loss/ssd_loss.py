@@ -48,6 +48,9 @@ class SSDLoss(nn.Module):
         #===============================================================
         # loc_loss = SmoothL1Loss(pos_loc_preds, pos_loc_targets)
         #===============================================================
+        # print (pos.size())
+        # print (pos.unsqueeze(2).size())
+        # print (loc_preds.size())
         mask = pos.unsqueeze(2).expand_as(loc_preds)       # [N,#anchors,4]
         loc_loss = F.smooth_l1_loss(loc_preds[mask], loc_targets[mask], size_average=False)
 

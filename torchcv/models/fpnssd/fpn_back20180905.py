@@ -173,14 +173,13 @@ class MobileNetV2FPN(nn.Module):
         self.toplayer = nn.Conv2d(320, 64, kernel_size=1, stride=1, padding=0)
 
         # Lateral layers
-        self.latlayer1 = nn.Conv2d(96, 64, kernel_size=1, stride=1, padding=0)
+        self.latlayer1 = nn.Conv2d(64, 64, kernel_size=1, stride=1, padding=0)
         self.latlayer2 = nn.Conv2d(32, 64, kernel_size=1, stride=1, padding=0)
         self.latlayer3 = nn.Conv2d(24, 64, kernel_size=1, stride=1, padding=0)
 
         # Smooth layers
         self.smooth1 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1)
         self.smooth2 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1)
-        self.smooth3 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1)
 
     def _make_layer(self, in_planes, expansion, out_planes, num_blocks, stride):
         layers = []
@@ -224,21 +223,20 @@ class MobileNetV2FPN(nn.Module):
         c7 = self.layer6(c6)
         c8 = self.layer7(c7)
 
-        p9  = self.conv6(c8)
+        p9 = self.conv6(c8)
         p10 = self.conv7(F.relu(p9))
         p11 = self.conv8(F.relu(p10))
         p12 = self.conv9(F.relu(p11))
-
         # Top-down
         p8 = self.toplayer(c8)
-        p5 = self._upsample_add(p8, self.latlayer1(c6))
+        p5 = self._upsample_add(p8, self.latlayer1(c5))
         p4 = self._upsample_add(p5, self.latlayer2(c4))
-        p3 = self._upsample_add(p4, self.latlayer3(c3))
+        # TODO: add p3 to box and cls
+        p3 = self._upsample_add(p8, self.latlayer3(c3))
 
         p5 = self.smooth1(p5)
         p4 = self.smooth2(p4)
-        p3 = self.smooth3(p3)
-        return p3, p4, p5, p8, p9, p10, p11, p12
+        return p4, p5, p8, p9, p10, p11, p12
 
         # out = F.relu(self.bn2(self.conv2(out)))
         # # NOTE: change pooling kernel_size 7 -> 4 for CIFAR10

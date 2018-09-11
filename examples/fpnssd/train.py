@@ -17,17 +17,19 @@ import torchvision.transforms as transforms
 from PIL import Image
 
 from torchcv.models.fpnssd import FPNSSD512
+from torchcv.models.fpnssd import FPNMobileNetV2SSD512
 from torchcv.models.fpnssd import FPNSSDBoxCoder
 
 from torchcv.loss import SSDLoss
 from torchcv.datasets import ListDataset
 from torchcv.transforms import resize, random_flip, random_paste, random_crop, random_distort
 
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,2"
 
 parser = argparse.ArgumentParser(description='PyTorch FPNSSD Training')
 parser.add_argument('--lr', default=1e-3, type=float, help='learning rate')
 parser.add_argument('--resume', '-r', action='store_true', help='resume from checkpoint')
-parser.add_argument('--model', default='./examples/fpnssd/model/fpnssd512_resnet50.pth', type=str, help='initialized model path')
+parser.add_argument('--model', default='./examples/fpnssd/model/fpnssd512_mobilenetv2.pth', type=str, help='initialized model path')
 parser.add_argument('--checkpoint', default='./examples/fpnssd/checkpoint/ckpt.pth', type=str, help='checkpoint path')
 args = parser.parse_args()
 
@@ -46,11 +48,15 @@ def transform_train(img, boxes, labels):
         transforms.ToTensor(),
         transforms.Normalize((0.485,0.456,0.406),(0.229,0.224,0.225))
     ])(img)
+    # print ("labels: ")
+    # print (labels.size())
     boxes, labels = box_coder.encode(boxes, labels)
+    # print (labels.size())
     return img, boxes, labels
 
-trainset = ListDataset(root='/home/liukuang/data/kitti/training/image_2',    \
-                       list_file='torchcv/datasets/kitti/kitti12_train.txt', \
+trainset = ListDataset(root='/home/ysdu/hardwareDisk/ysduDir/voc/voc_all_images',
+                       list_file=['torchcv/datasets/voc/voc07_trainval.txt',
+                                  'torchcv/datasets/voc/voc12_trainval.txt'],
                        transform=transform_train)
 
 def transform_test(img, boxes, labels):
@@ -62,17 +68,17 @@ def transform_test(img, boxes, labels):
     boxes, labels = box_coder.encode(boxes, labels)
     return img, boxes, labels
 
-testset = ListDataset(root='/home/liukuang/data/kitti/training/image_2',  \
-                      list_file='torchcv/datasets/kitti/kitti12_val.txt', \
+testset = ListDataset(root='/home/ysdu/hardwareDisk/ysduDir/voc/voc_all_images',
+                      list_file='torchcv/datasets/voc/voc07_test.txt',
                       transform=transform_test)
 
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=8, shuffle=True, num_workers=8)
-testloader = torch.utils.data.DataLoader(testset, batch_size=8, shuffle=False, num_workers=8)
+trainloader = torch.utils.data.DataLoader(trainset, batch_size=16, shuffle=True, num_workers=8)
+testloader = torch.utils.data.DataLoader(testset, batch_size=16, shuffle=False, num_workers=8)
 
 # Model
 print('==> Building model..')
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-net = FPNSSD512(num_classes=9).to(device)
+net = FPNMobileNetV2SSD512(num_classes=21).to(device)
 net.load_state_dict(torch.load(args.model))
 if device == 'cuda':
     net = torch.nn.DataParallel(net)
@@ -87,7 +93,7 @@ if args.resume:
     best_loss = checkpoint['loss']
     start_epoch = checkpoint['epoch']
 
-criterion = SSDLoss(num_classes=9)
+criterion = SSDLoss(num_classes=21)
 optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=1e-4)
 
 # Training

@@ -4,17 +4,25 @@ import torch.backends.cudnn as cudnn
 import torchvision.transforms as transforms
 
 from PIL import Image, ImageDraw
-from torchcv.models.fpnssd import FPNSSD512, FPNSSDBoxCoder
+from torchcv.models.fpnssd import FPNMobileNetV2SSD512, FPNSSDBoxCoder
+import os
 
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,2"
 
 print('Loading model..')
-net = FPNSSD512(num_classes=9).to('cuda')
+net = FPNMobileNetV2SSD512(num_classes=21).to('cuda')
 net = torch.nn.DataParallel(net)
-net.load_state_dict(torch.load('./examples/fpnssd/checkpoint/17.pth'))
+# cudnn.benchmark = True
+# net.load_state_dict(torch.load('/home/ysdu/torchcv/examples/fpnssd/checkpoint/ckpt.pth'))
+checkpoint = torch.load('/home/ysdu/torchcv/examples/fpnssd/checkpoint/ckpt.pth')
+net.load_state_dict(checkpoint['net'])
+best_loss = checkpoint['loss']
+start_epoch = checkpoint['epoch']
+# net = torch.nn.DataParallel(net)
 net.eval()
 
 print('Loading image..')
-img = Image.open('/home/liukuang/data/kitti/training/image_2/000000.png')
+img = Image.open('/home/ysdu/hardwareDisk/ysduDir/voc/VOCdevkit_test/VOC2012/JPEGImages/2008_002819.jpg')
 ow = oh = 512
 img = img.resize((ow,oh))
 
@@ -31,6 +39,7 @@ loc_preds = loc_preds.squeeze().cpu()
 cls_preds = F.softmax(cls_preds.squeeze(), dim=1).cpu()
 boxes, labels, scores = box_coder.decode(loc_preds, cls_preds)
 
+print (labels)
 draw = ImageDraw.Draw(img)
 for box in boxes:
     draw.rectangle(list(box), outline='red')
